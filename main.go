@@ -13,10 +13,24 @@ func main() {
 	fileServer := http.FileServer(http.Dir("."))
 	handler := http.StripPrefix("/app", fileServer)
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
-	mux.HandleFunc("/metrics", apiCfg.metricsHandler)
-	mux.HandleFunc("/reset", apiCfg.resetHandler)
+	mux.HandleFunc("GET /admin/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(200)
 
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		htmlTemplate := `<html>
+	  <body>
+		<h1>Welcome, Chirpy Admin</h1>
+		<p>Chirpy has been visited %d times!</p>
+	  </body>
+	</html>`
+
+		hits := apiCfg.fileserverHits.Load()
+		html := fmt.Sprintf(htmlTemplate, hits)
+		w.Write([]byte(html))
+	})
+	mux.HandleFunc("POST /admin/reset", apiCfg.resetHandler)
+
+	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(200)
 		w.Write([]byte("OK"))
